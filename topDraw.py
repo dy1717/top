@@ -13,12 +13,12 @@ version = os.environ['CMSSW_VERSION']
 
 mcfilelist = [
                'TT_powheg',
-             # 'WJets',
-             # "SingleTop_tW",
-             # "SingleTbar_tW",
-             # 'ZZ',
-             # 'WW',
-             # 'WZ',
+              # 'WJets',
+              # "SingleTop_tW",
+              # "SingleTbar_tW",
+              # 'ZZ',
+              # 'WW',
+              # 'WZ',
                'DYJets',
                'DYJets_10to50',
              ]
@@ -33,21 +33,21 @@ datasets = json.load(open("%s/src/nano/analysis/data/dataset/dataset.json" % os.
 
 #defalts
 step = 5
-channel = 3
+channel = 0
 cut = 'dilep.M() > 20'
 weight = 'genweight*puweight'
 #weight = 'genweight'
 #plotvar = 'met'
 plotvar = 'dilep.M()'
-binning = [100, 20, 320]
+binning = [60, 20, 320]
 x_name = 'mass [GeV]'
 y_name = 'Events'
-dolog = True
+dolog = False
 tname = "event"
 
 #get input
 try:
-    opts, args = getopt.getopt(sys.argv[1:],"hdc:w:b:p:x:y:j:a:s",["cut","weight","binning","plotvar","x_name","y_name","json_used","dolog", "channel", "step"])
+    opts, args = getopt.getopt(sys.argv[1:],"hdc:w:b:p:x:y:j:a:s:",["cut","weight","binning","plotvar","x_name","y_name","json_used","dolog", "channel", "step"])
 except getopt.GetoptError:          
     print 'Usage : ./topDraw.py -c <cut> -w <weight> -b <binning> -p <plotvar> -x <x_name> -y <y_name> -j <json_used> -d <dolog>'
     sys.exit(2)
@@ -104,6 +104,7 @@ for imc,mcname in enumerate(mcfilelist):
     rfname = rootfileDir + mcname +".root"
     print rfname
     tfile = ROOT.TFile(rfname)
+    #wentries = tfile.Get("genweight").Integral()
     wentries = tfile.Get("nevents").Integral()
     scale = scale/wentries
     print "wentries:%s, scale:%s"%(wentries,scale)
