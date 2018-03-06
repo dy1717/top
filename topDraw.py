@@ -6,24 +6,24 @@ from ROOT import TLorentzVector
 ROOT.gROOT.SetBatch(True)
 
 json_used = 'Golden'
-datalumi = 36.814 #35.9fb-1
-CMS_lumi.lumi_sqrtS = "%.2f fb^{-1}, #sqrt{s} = 13 TeV 25ns "%(datalumi)
+datalumi = 35.9#35.9fb-1
+CMS_lumi.lumi_sqrtS = "%.1f fb^{-1}, #sqrt{s} = 13 TeV 25ns "%(datalumi)
 datalumi = datalumi*1000
 version = os.environ['CMSSW_VERSION']
 
 mcfilelist = [
                'TT_powheg',
-              # 'WJets',
-              # "SingleTop_tW",
-              # "SingleTbar_tW",
-              # 'ZZ',
-              # 'WW',
-              # 'WZ',
+               'WJets',
+               "SingleTop_tW",
+               "SingleTbar_tW",
+               'ZZ',
+               'WW',
+               'WZ',
                'DYJets',
                'DYJets_10to50',
              ]
-rdfilelist = ['MuonEG_Run2016','DoubleEG_Run2016','DoubleMuon_Run2016']
-
+rdfilelist = ['ch_me','ch_ee','ch_mm']
+#rdsingle = ['SingleMuon_Run2016','SingleElectron_Run2016']
 
 rootfileDir = "%s/src/nano/analysis/topMass/Results/results_merged/topmass_"% os.environ['CMSSW_BASE']
 
@@ -35,7 +35,8 @@ datasets = json.load(open("%s/src/nano/analysis/data/dataset/dataset.json" % os.
 step = 5
 channel = 0
 cut = 'dilep.M() > 20'
-weight = 'genweight*puweight'
+#weight = 'genweight*puweight'
+weight = 'genweight*puweight*mueffweight*eleffweight'
 #weight = 'genweight'
 #plotvar = 'met'
 plotvar = 'dilep.M()'
@@ -104,8 +105,8 @@ for imc,mcname in enumerate(mcfilelist):
     rfname = rootfileDir + mcname +".root"
     print rfname
     tfile = ROOT.TFile(rfname)
-    #wentries = tfile.Get("genweight").Integral()
     wentries = tfile.Get("nevents").Integral()
+    #wentries = tfile.Get("nevents").Integral()
     scale = scale/wentries
     print "wentries:%s, scale:%s"%(wentries,scale)
     #if "tt" in mcname: 

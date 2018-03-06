@@ -163,6 +163,43 @@ void nanoAnalysis::analysis()
 
   b_dilep = b_lep1 + b_lep2;
 
+
+  if (b_channel == CH_MUMU){
+    if (m_isMC){
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //mumu
+         || HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
+    }
+    else {
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)) return;
+    }
+  }
+
+  if (b_channel == CH_MUEL){
+    if (m_isMC){
+      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
+          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
+          || HLT_IsoMu24 || HLT_IsoTkMu24
+          || HLT_Ele27_WPTight_Gsf)) return;
+    }
+    else {
+      if (!(HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
+         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ)) return;
+    }
+  }
+
+  if (b_channel == CH_ELEL){
+    if (m_isMC){
+      if (!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ //ee
+          || HLT_Ele27_WPTight_Gsf)) return;  //e
+    }
+    else{
+      if (!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) return;
+    }
+  }
+
+
   b_mueffweight    = muonSF_.getScaleFactor(recolep1, 13, 0)*muonSF_.getScaleFactor(recolep2, 13,  0);
   b_mueffweight_up = muonSF_.getScaleFactor(recolep1, 13, +1)*muonSF_.getScaleFactor(recolep2, 13, +1);
   b_mueffweight_dn = muonSF_.getScaleFactor(recolep1, 13, -1)*muonSF_.getScaleFactor(recolep2, 13, -1);
@@ -186,49 +223,6 @@ void nanoAnalysis::analysis()
   b_step = 2;
   h_cutFlow->Fill(5);
    
-  if (b_channel == CH_MUMU){
-    if (m_isMC){
-      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
-         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //mumu
-         || HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
-    }
-    else {
-      if ((HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ
-         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)
-         || !(HLT_IsoMu24 || HLT_IsoTkMu24)) return;
-    }
-
-
-  }
-
-  if (b_channel == CH_MUEL){
-    if (m_isMC){
-      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
-          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
-          || HLT_IsoMu24 || HLT_IsoTkMu24
-          || HLT_Ele27_WPTight_Gsf)) return;
-    }
-    else {
-      if ((HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
-         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ) //emu
-         || (HLT_Ele27_WPTight_Gsf)  //e
-         || !(HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
-    }
-
-
-  }
-
-  if (b_channel == CH_ELEL){
-    if (m_isMC){
-      if (!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ //ee
-          || HLT_Ele27_WPTight_Gsf)) return;  //e
-    }
-    else{
-      if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ
-         || !(HLT_Ele27_WPTight_Gsf)) return;
-    }
- 
-  }
 
 
 

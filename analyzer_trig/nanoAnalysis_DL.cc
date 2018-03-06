@@ -135,33 +135,79 @@ void nanoAnalysis::analysis()
 
   int mulpdg;
   if (muons.size() == 2){
-      muons[0].Momentum(b_lep1);
-      muons[1].Momentum(b_lep2);
+      recolep1 = muons[0];
+      recolep2 = muons[1];
       mulpdg = muons[0].GetPdgCode()*muons[1].GetPdgCode();
       b_channel = CH_MUMU;
   }
   
   if (muons.size() == 1 && elecs.size() == 1){
-      muons[0].Momentum(b_lep1);
-      elecs[0].Momentum(b_lep2);
+      recolep1 = muons[0];
+      recolep2 = elecs[0];
       mulpdg = muons[0].GetPdgCode()*elecs[0].GetPdgCode();
       b_channel = CH_MUEL;
   }
   if (elecs.size() == 2){
-      elecs[0].Momentum(b_lep1);
-      elecs[1].Momentum(b_lep2);
+      recolep1 = elecs[0];
+      recolep2 = elecs[1];
       mulpdg = elecs[0].GetPdgCode()*elecs[1].GetPdgCode();
       b_channel = CH_ELEL;
   }
 
   //vector<TLorentzVector> recoleps;
+  recolep1.Momentum(b_lep1);
+  recolep2.Momentum(b_lep2);
+
   recoleps.push_back(b_lep1);
   recoleps.push_back(b_lep2);
 
   b_dilep = b_lep1 + b_lep2;
 
+  //Triggers
+  if (b_channel == CH_MUMU){
+    if (m_isMC){
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ     //mumu
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //
+         || HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
+    }
+    else {
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ     //mumu
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)) return;
+    }
+  }
 
-  
+  if (b_channel == CH_MUEL){
+    if (m_isMC){
+      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL        //emu//
+          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ  //
+          || HLT_IsoMu24 || HLT_IsoTkMu24       //mu
+          || HLT_Ele27_WPTight_Gsf)) return;    //e
+    }
+    else {
+      if (!(HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL         //emu
+         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ)) return;
+    }
+  }
+
+  if (b_channel == CH_ELEL){
+    if (m_isMC){
+      if (!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ //ee
+          || HLT_Ele27_WPTight_Gsf)) return;  //e
+    }
+    else{
+      if (!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) return;  //ee
+    }
+  }
+
+  //leptonSF
+  b_mueffweight    = muonSF_.getScaleFactor(recolep1, 13, 0)*muonSF_.getScaleFactor(recolep2, 13,  0);
+  b_mueffweight_up = muonSF_.getScaleFactor(recolep1, 13, +1)*muonSF_.getScaleFactor(recolep2, 13, +1);
+  b_mueffweight_dn = muonSF_.getScaleFactor(recolep1, 13, -1)*muonSF_.getScaleFactor(recolep2, 13, -1);
+
+  b_eleffweight    = elecSF_.getScaleFactor(recolep1, 11, 0)*elecSF_.getScaleFactor(recolep2, 11,  0);
+  b_eleffweight_up = elecSF_.getScaleFactor(recolep1, 11, +1)*elecSF_.getScaleFactor(recolep2, 11, +1);
+  b_eleffweight_dn = elecSF_.getScaleFactor(recolep1, 11, -1)*elecSF_.getScaleFactor(recolep2, 11, -1);
+
   auto jets = jetSelection();
   auto bjets = bjetSelection();
   
@@ -176,60 +222,12 @@ void nanoAnalysis::analysis()
   b_step2 = true;
   b_step = 2;
   h_cutFlow->Fill(5);
-  /*
-  Bool_t IsoMu24 = false;
-  Bool_t IsoTkMu24 = false;
-  for (Int_t i = 0; i < nTrigObj; ++i){
-    if (TrigObj_id[i] != 13) continue;
-    if (TrigObj_pt[i] < 24) continue;
-    Int_t bits = TrigObj_filterBits[i];
-    if (bits & 0x2) IsoMu24 = true;
-    if (bits & 0x8) IsoTkMu24 = true;	
-  }
-  if (!(IsoMu24 || IsoTkMu24)) return;
-  */
    
-  if (b_channel == CH_MUMU){
-    if (m_isMC){
-      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
-         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //mumu
-         || HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
-    }
-    else {
-      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ
-         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)) return;
-    }
-  }
-
-  if (b_channel == CH_MUEL){
-    if (m_isMC){
-      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
-          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
-          || HLT_IsoMu24 || HLT_IsoTkMu24
-          || HLT_Ele27_WPTight_Gsf)) return;
-    }
-    else {
-      if (!(HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
-         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ)) return;
-    }
-  }
-
-  if (b_channel == CH_ELEL){
-    if (m_isMC){
-      if (!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ //ee
-          || HLT_Ele27_WPTight_Gsf)) return;  //e
-    }
-    else{
-      if (!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) return;
-    }
-  }
-
-
-
 
   b_met = MET_pt;
   b_njet = jets.size();
   b_nbjet = bjets.size();
+
 
   if (b_channel != CH_MUEL && b_met < 40) return;
   b_step3 = true;
@@ -271,7 +269,6 @@ void nanoAnalysis::Loop()
     Long64_t ientry = LoadTree(jentry);
     if (ientry < 0) break;
     nb = fChain->GetEntry(jentry); nbytes += nb;
-
     
     analysis();
 
@@ -408,6 +405,9 @@ void nanoAnalysis::MakeBranch(TTree* t)
   t->Branch("weight", &b_weight, "weight/F");
   t->Branch("puweight", &b_puweight, "puweight/F");
   t->Branch("genweight", &b_genweight, "genweight/F");
+
+  t->Branch("mueffweight", &b_mueffweight, "mueffweight/F");
+  t->Branch("eleffweight", &b_eleffweight, "eleffweight/F");
   t->Branch("PV_npvs", &PV_npvs, "PV_npvs/I");
 }
 
@@ -417,6 +417,7 @@ void nanoAnalysis::resetBranch()
   b_lep1.SetPtEtaPhiM(0,0,0,0);
   b_lep2.SetPtEtaPhiM(0,0,0,0);
   b_dilep.SetPtEtaPhiM(0,0,0,0);
+
   //b_jet1.SetPtEtaPhiM(0,0,0,0);
   //b_jet2.SetPtEtaPhiM(0,0,0,0);
   recoleps.clear();
@@ -427,6 +428,8 @@ void nanoAnalysis::resetBranch()
   b_nvertex = 0; b_step = -1; b_channel = 0; b_njet = 0; b_nbjet = 0;
   b_step1 = 0; b_step2 = 0; b_step3 = 0; b_step4 = 0; b_step5 = 0; b_step6 = 0; b_step7 = 0;
   b_met = -9; b_weight = 1; b_genweight = 1; b_puweight = 1;
+  b_mueffweight = 1;b_mueffweight_up = 1;b_mueffweight_dn = 1;
+  b_eleffweight = 1;b_eleffweight_up = 1;b_eleffweight_dn = 1;
 }
 
 

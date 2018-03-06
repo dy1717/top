@@ -8,18 +8,8 @@ from math import ceil
 username = os.environ['USER']
 
 analysis = 'top'
-"""
-RunFiles = [
-              'TT_powheg',
 
-            #  'WJets',
-            #  "SingleTop_tW",
-            #  "SingleTbar_tW",
-            #  'ZZ',
-            #  'WW',
-            #  'WZ',
-              'DYJets',
-              'DYJets_10to50',
+RunFiles = [
               'DoubleEG_Run2016B',
               'DoubleEG_Run2016Bv1',
               'DoubleEG_Run2016C',
@@ -47,27 +37,36 @@ RunFiles = [
               ]
 """
 RunFiles = [
-           # 'SingleMuon_Run2016B', 
-           # 'SingleMuon_Run2016Bv1',
-           # 'SingleMuon_Run2016C',
-           # 'SingleMuon_Run2016D',
-           # 'SingleMuon_Run2016E',
-           # 'SingleMuon_Run2016F',
-           # 'SingleMuon_Run2016G',
-           # 'SingleMuon_Run2016H',
-            'SingleElectron_Run2016B',
-            'SingleElectron_Run2016Bv1',
-            'SingleElectron_Run2016C',
-            'SingleElectron_Run2016D',
-            'SingleElectron_Run2016E',
-            'SingleElectron_Run2016F',
-            'SingleElectron_Run2016G',
-            'SingleElectron_Run2016H',
-            #'TT_powheg',
-            #'DYJets',
-            #'DYJets_10to50',
+         #   'SingleMuon_Run2016B', 
+         #   'SingleMuon_Run2016Bv1',
+         #   'SingleMuon_Run2016C',
+         #   'SingleMuon_Run2016D',
+         #   'SingleMuon_Run2016E',
+         #   'SingleMuon_Run2016F',
+         #   'SingleMuon_Run2016G',
+         #   'SingleMuon_Run2016H',
+          'SingleElectron_Run2016B',
+          'SingleElectron_Run2016Bv1',
+          'SingleElectron_Run2016C',
+          'SingleElectron_Run2016D',
+          'SingleElectron_Run2016E',
+          'SingleElectron_Run2016F',
+          'SingleElectron_Run2016G',
+          'SingleElectron_Run2016H',
+         #   #'TT_powheg',
+         #   #'DYJets',
+         #   #'DYJets_10to50',
+         #   'TT_powheg',
+         #   'WJets',
+         #   "SingleTop_tW",
+         #   "SingleTbar_tW",
+         #   'ZZ',
+         #   'WW',
+         #   'WZ',
+         #   'DYJets',
+         #   'DYJets_10to50',
             ]
-
+"""
 datadir = '{}/src/nano/analysis/data/dataset/'.format(os.environ['CMSSW_BASE'])
 #version = os.environ["CMSSW_VERSION"]
 
