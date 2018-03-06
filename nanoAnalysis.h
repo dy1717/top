@@ -18,7 +18,9 @@
 
 #include "../src/RoccoR.cc"
 #include "../src/pileUpTool.h"
-#include "../plugins/jsoncpp.cpp"
+#include "../src/MuonScaleFactorEvaluator.h"
+#include "../src/ElecScaleFactorEvaluator.h"
+//#include "../plugins/jsoncpp.cpp"
 #include "../src/lumiTool.h"
 
 // Header file for the classes stored in the TTree if any.
@@ -38,17 +40,24 @@ private:
       
   //Variables
   TLorentzVector b_lep1, b_lep2, b_dilep, b_jet1, b_jet2;
+  TParticle recolep1, recolep2;
   int b_lep1_pid, b_lep2_pid;
   float b_jet1_CSVInclV2, b_jet2_CSVInclV2;
 
   int b_nvertex, b_step, b_channel, b_njet, b_nbjet;
   bool b_step1, b_step2, b_step3, b_step4, b_step5, b_step6, b_step7;  
+  float b_tri_SL, b_tri_DL;
   float b_met, b_weight, b_genweight, b_puweight;
-  
+  float b_mueffweight, b_mueffweight_up, b_mueffweight_dn,
+        b_eleffweight, b_eleffweight_up, b_eleffweight_dn;
+
   // Tools
   RoccoR* m_rocCor;
   TH1D* hist_mc;
+  MuonScaleFactorEvaluator muonSF_;
+  ElecScaleFactorEvaluator elecSF_;
   Bool_t m_isMC;
+
   pileUpTool *m_pileUp;
   lumiTool* m_lumi;
   //LumiMap
@@ -71,11 +80,10 @@ private:
   std::vector<TParticle> jetSelection();
   std::vector<TParticle> bjetSelection();
 
-  std::vector<int>  idxs; 
  public :
   //set output file
   void setOutput(std::string outputName);
-  void LoadModules(pileUpTool* pileUp, lumiTool* lumi, RoccoR* rocCor); 
+  void LoadModules(pileUpTool* pileUp, lumiTool* lumi); 
 
   TTree          *fChain;   //!pointer to the analyzed TTree or TChain
   Int_t           fCurrent; //!current Tree number in a TChain
@@ -257,37 +265,37 @@ private:
   Float_t         MET_significance;
   Float_t         MET_sumEt;
   UInt_t          nMuon;
-  Float_t         Muon_dxy[5];   //[nMuon]
-  Float_t         Muon_dxyErr[5];   //[nMuon]
-  Float_t         Muon_dz[5];   //[nMuon]
-  Float_t         Muon_dzErr[5];   //[nMuon]
-  Float_t         Muon_eta[5];   //[nMuon]
-  Float_t         Muon_ip3d[5];   //[nMuon]
-  Float_t         Muon_mass[5];   //[nMuon]
-  Float_t         Muon_miniPFRelIso_all[5];   //[nMuon]
-  Float_t         Muon_miniPFRelIso_chg[5];   //[nMuon]
-  Float_t         Muon_pfRelIso03_all[5];   //[nMuon]
-  Float_t         Muon_pfRelIso03_chg[5];   //[nMuon]
-  Float_t         Muon_pfRelIso04_all[5];   //[nMuon]
-  Float_t         Muon_phi[5];   //[nMuon]
-  Float_t         Muon_pt[5];   //[nMuon]
-  Float_t         Muon_ptErr[5];   //[nMuon]
-  Float_t         Muon_segmentComp[5];   //[nMuon]
-  Float_t         Muon_sip3d[5];   //[nMuon]
-  Float_t         Muon_mvaTTH[5];   //[nMuon]
-  Int_t           Muon_charge[5];   //[nMuon]
-  Int_t           Muon_jetIdx[5];   //[nMuon]
-  Int_t           Muon_nStations[5];   //[nMuon]
-  Int_t           Muon_nTrackerLayers[5];   //[nMuon]
-  Int_t           Muon_pdgId[5];   //[nMuon]
-  Int_t           Muon_tightCharge[5];   //[nMuon]
-  Bool_t          Muon_globalMu[5];   //[nMuon]
-  UChar_t         Muon_highPtId[5];   //[nMuon]
-  Bool_t          Muon_isPFcand[5];   //[nMuon]
-  Bool_t          Muon_mediumId[5];   //[nMuon]
-  Bool_t          Muon_softId[5];   //[nMuon]
-  Bool_t          Muon_tightId[5];   //[nMuon]
-  Bool_t          Muon_trackerMu[5];   //[nMuon]
+  Float_t         Muon_dxy[10];   //[nMuon]
+  Float_t         Muon_dxyErr[10];   //[nMuon]
+  Float_t         Muon_dz[10];   //[nMuon]
+  Float_t         Muon_dzErr[10];   //[nMuon]
+  Float_t         Muon_eta[10];   //[nMuon]
+  Float_t         Muon_ip3d[10];   //[nMuon]
+  Float_t         Muon_mass[10];   //[nMuon]
+  Float_t         Muon_miniPFRelIso_all[10];   //[nMuon]
+  Float_t         Muon_miniPFRelIso_chg[10];   //[nMuon]
+  Float_t         Muon_pfRelIso03_all[10];   //[nMuon]
+  Float_t         Muon_pfRelIso03_chg[10];   //[nMuon]
+  Float_t         Muon_pfRelIso04_all[10];   //[nMuon]
+  Float_t         Muon_phi[10];   //[nMuon]
+  Float_t         Muon_pt[10];   //[nMuon]
+  Float_t         Muon_ptErr[10];   //[nMuon]
+  Float_t         Muon_segmentComp[10];   //[nMuon]
+  Float_t         Muon_sip3d[10];   //[nMuon]
+  Float_t         Muon_mvaTTH[10];   //[nMuon]
+  Int_t           Muon_charge[10];   //[nMuon]
+  Int_t           Muon_jetIdx[10];   //[nMuon]
+  Int_t           Muon_nStations[10];   //[nMuon]
+  Int_t           Muon_nTrackerLayers[10];   //[nMuon]
+  Int_t           Muon_pdgId[10];   //[nMuon]
+  Int_t           Muon_tightCharge[10];   //[nMuon]
+  Bool_t          Muon_globalMu[10];   //[nMuon]
+  UChar_t         Muon_highPtId[10];   //[nMuon]
+  Bool_t          Muon_isPFcand[10];   //[nMuon]
+  Bool_t          Muon_mediumId[10];   //[nMuon]
+  Bool_t          Muon_softId[10];   //[nMuon]
+  Bool_t          Muon_tightId[10];   //[nMuon]
+  Bool_t          Muon_trackerMu[10];   //[nMuon]
   UInt_t          nPhoton;
   Float_t         Photon_eCorr[7];   //[nPhoton]
   Float_t         Photon_energyErr[7];   //[nPhoton]
@@ -312,7 +320,7 @@ private:
   Bool_t          Photon_mvaID_WP90[7];   //[nPhoton]
   Bool_t          Photon_pixelSeed[7];   //[nPhoton]
   Int_t           Pileup_nPU;
-  Int_t           Pileup_nTrueInt;
+  Float_t         Pileup_nTrueInt;
   Float_t         PuppiMET_phi;
   Float_t         PuppiMET_pt;
   Float_t         PuppiMET_sumEt;
@@ -431,15 +439,15 @@ private:
   Int_t           Jet_genJetIdx[35];   //[nJet]
   Int_t           Jet_hadronFlavour[35];   //[nJet]
   Int_t           Jet_partonFlavour[35];   //[nJet]
-  Int_t           Muon_genPartIdx[5];   //[nMuon]
-  UChar_t         Muon_genPartFlav[5];   //[nMuon]
+  Int_t           Muon_genPartIdx[10];   //[nMuon]
+  UChar_t         Muon_genPartFlav[10];   //[nMuon]
   Int_t           Photon_genPartIdx[7];   //[nPhoton]
   UChar_t         Photon_genPartFlav[7];   //[nPhoton]
   Float_t         MET_fiducialGenPhi;
   Float_t         MET_fiducialGenPt;
   UChar_t         Electron_cleanmask[6];   //[nElectron]
   UChar_t         Jet_cleanmask[35];   //[nJet]
-  UChar_t         Muon_cleanmask[5];   //[nMuon]
+  UChar_t         Muon_cleanmask[10];   //[nMuon]
   UChar_t         Photon_cleanmask[7];   //[nPhoton]
   UChar_t         Tau_cleanmask[5];   //[nTau]
   Float_t         SV_chi2[9];   //[nSV]

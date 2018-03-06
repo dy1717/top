@@ -24,7 +24,7 @@ vector<TParticle> nanoAnalysis::muonSelection()
     TLorentzVector mom;
     mom.SetPtEtaPhiM(Muon_pt[i], Muon_eta[i], Muon_phi[i], Muon_mass[i]);
 
-    mom *= roccoR(mom, Muon_charge[i], Muon_genPartIdx[i], Muon_nTrackerLayers[i]);
+   // mom *= roccoR(mom, Muon_charge[i], Muon_genPartIdx[i], Muon_nTrackerLayers[i]);
     
     auto muon = TParticle();
     muon.SetPdgCode(13*Muon_charge[i]*-1);
@@ -75,7 +75,6 @@ vector<TParticle> nanoAnalysis::jetSelection()
     auto jet = TParticle();
     jet.SetMomentum(mom);
     jets.push_back(jet);
-    idxs.push_back(i);
   }
   return jets;
 }
@@ -84,10 +83,12 @@ vector<TParticle> nanoAnalysis::jetSelection()
 vector<TParticle> nanoAnalysis::bjetSelection()
 {
   vector<TParticle> bjets; 
-  for (int idx : idxs ){
-    if (Jet_btagCSVV2[idx] < 0.8484) continue;
+  for (UInt_t i = 0; i < nJet; ++i ){
+    if (Jet_pt[i] < 30) continue;
+
+    if (Jet_btagCSVV2[i] < 0.8484) continue;
     TLorentzVector mom;
-    mom.SetPtEtaPhiM(Jet_pt[idx], Jet_eta[idx], Jet_phi[idx], Jet_mass[idx]);
+    mom.SetPtEtaPhiM(Jet_pt[i], Jet_eta[i], Jet_phi[i], Jet_mass[i]);
     auto bjet = TParticle();
     bjet.SetMomentum(mom);
     bjets.push_back(bjet);
@@ -109,7 +110,6 @@ void nanoAnalysis::analysis()
     b_genweight = genWeight;
     h_genweights->Fill(0.5, b_genweight);
     b_weight = b_genweight * b_puweight;
-    //h_weights->Fill(0.5, b_weight); //ori
   }
   else
   {
@@ -117,7 +117,7 @@ void nanoAnalysis::analysis()
     b_genweight = 0;
     if (!(m_lumi->LumiCheck(run, luminosityBlock))) return;
   }
-  h_nevents->Fill(0.5,b_genweight*b_puweight); //try
+  h_nevents->Fill(0.5,b_genweight*b_puweight); 
     
   h_cutFlow->Fill(1);
 
@@ -135,31 +135,42 @@ void nanoAnalysis::analysis()
 
   int mulpdg;
   if (muons.size() == 2){
-      muons[0].Momentum(b_lep1);
-      muons[1].Momentum(b_lep2);
+      recolep1 = muons[0];
+      recolep2 = muons[1];
       mulpdg = muons[0].GetPdgCode()*muons[1].GetPdgCode();
       b_channel = CH_MUMU;
   }
   
   if (muons.size() == 1 && elecs.size() == 1){
-      muons[0].Momentum(b_lep1);
-      elecs[0].Momentum(b_lep2);
+      recolep1 = muons[0];
+      recolep2 = elecs[0];
       mulpdg = muons[0].GetPdgCode()*elecs[0].GetPdgCode();
       b_channel = CH_MUEL;
   }
   if (elecs.size() == 2){
-      elecs[0].Momentum(b_lep1);
-      elecs[1].Momentum(b_lep2);
+      recolep1 = elecs[0];
+      recolep2 = elecs[1];
       mulpdg = elecs[0].GetPdgCode()*elecs[1].GetPdgCode();
       b_channel = CH_ELEL;
   }
 
   //vector<TLorentzVector> recoleps;
+  recolep1.Momentum(b_lep1);
+  recolep2.Momentum(b_lep2);
+
   recoleps.push_back(b_lep1);
   recoleps.push_back(b_lep2);
 
   b_dilep = b_lep1 + b_lep2;
-  
+
+  b_mueffweight    = muonSF_.getScaleFactor(recolep1, 13, 0)*muonSF_.getScaleFactor(recolep2, 13,  0);
+  b_mueffweight_up = muonSF_.getScaleFactor(recolep1, 13, +1)*muonSF_.getScaleFactor(recolep2, 13, +1);
+  b_mueffweight_dn = muonSF_.getScaleFactor(recolep1, 13, -1)*muonSF_.getScaleFactor(recolep2, 13, -1);
+  b_eleffweight    = elecSF_.getScaleFactor(recolep1, 11, 0)*elecSF_.getScaleFactor(recolep2, 11,  0);
+  b_eleffweight_up = elecSF_.getScaleFactor(recolep1, 11, +1)*elecSF_.getScaleFactor(recolep2, 11, +1);
+  b_eleffweight_dn = elecSF_.getScaleFactor(recolep1, 11, -1)*elecSF_.getScaleFactor(recolep2, 11, -1);
+
+
   auto jets = jetSelection();
   auto bjets = bjetSelection();
   
@@ -174,31 +185,54 @@ void nanoAnalysis::analysis()
   b_step2 = true;
   b_step = 2;
   h_cutFlow->Fill(5);
-  /*
-  Bool_t IsoMu24 = false;
-  Bool_t IsoTkMu24 = false;
-  for (Int_t i = 0; i < nTrigObj; ++i){
-    if (TrigObj_id[i] != 13) continue;
-    if (TrigObj_pt[i] < 24) continue;
-    Int_t bits = TrigObj_filterBits[i];
-    if (bits & 0x2) IsoMu24 = true;
-    if (bits & 0x8) IsoTkMu24 = true;	
-  }
-  if (!(IsoMu24 || IsoTkMu24)) return;
-  */
    
   if (b_channel == CH_MUMU){
-    if ((!HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL) && (!HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ)
-      && (!HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL) && (!HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)) return;
+    if (m_isMC){
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //mumu
+         || HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
+    }
+    else {
+      if ((HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)
+         || !(HLT_IsoMu24 || HLT_IsoTkMu24)) return;
+    }
+
+
   }
 
   if (b_channel == CH_MUEL){
-    if ((!HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL) && (!HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL)
-      && (!HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) && (!HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ)) return;
+    if (m_isMC){
+      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
+          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
+          || HLT_IsoMu24 || HLT_IsoTkMu24
+          || HLT_Ele27_WPTight_Gsf)) return;
+    }
+    else {
+      if ((HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
+         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ) //emu
+         || (HLT_Ele27_WPTight_Gsf)  //e
+         || !(HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
+    }
+
+
   }
+
   if (b_channel == CH_ELEL){
-    if (!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) return;
+    if (m_isMC){
+      if (!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ //ee
+          || HLT_Ele27_WPTight_Gsf)) return;  //e
+    }
+    else{
+      if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ
+         || !(HLT_Ele27_WPTight_Gsf)) return;
+    }
+ 
   }
+
+
+
+
   b_met = MET_pt;
   b_njet = jets.size();
   b_nbjet = bjets.size();
@@ -220,9 +254,8 @@ void nanoAnalysis::analysis()
 
 }
 
-void nanoAnalysis::LoadModules(pileUpTool* pileUp, lumiTool* lumi, RoccoR* rocCor)
+void nanoAnalysis::LoadModules(pileUpTool* pileUp, lumiTool* lumi)
 {
-  m_rocCor = rocCor;
   m_lumi = lumi;
   m_pileUp = pileUp;
 }
@@ -244,7 +277,6 @@ void nanoAnalysis::Loop()
     Long64_t ientry = LoadTree(jentry);
     if (ientry < 0) break;
     nb = fChain->GetEntry(jentry); nbytes += nb;
-
     
     analysis();
 
@@ -274,7 +306,7 @@ int main(int argc, char* argv[])
     if (filename.find('#') != string::npos) continue;
     if (filename.empty()) continue;
 
-    cout<< "Opening File: "<<filename << endl;
+cout<< "Opening File: "<<filename << endl;
     chain->Add(TString(filename+"/Events"));
 
   }
@@ -292,16 +324,12 @@ int main(int argc, char* argv[])
 
 int main(int argc, char* argv[])
 {
+  std::string env = std::getenv("CMSSW_BASE");
+  lumiTool* lumi = new lumiTool(env+"/src/nano/analysis/data/Cert_271036-284044_13TeV_PromptReco_Collisions16_JSON.txt");
+  pileUpTool* pileUp = new pileUpTool();
+
   if(argc != 1)
   {
-    std::string env = std::getenv("CMSSW_BASE");
-    std::cout << "start\n";
-    RoccoR* rocCor = new RoccoR(env+"/src/nano/analysis/data/rcdata.2016.v3/");
-    std::cout << "roccor loaded\n";
-    lumiTool* lumi = new lumiTool(env+"/src/nano/analysis/data/Cert_271036-284044_13TeV_PromptReco_Collisions16_JSON.txt");
-    std::cout << "lumiTool loaded\n";
-    pileUpTool* pileUp = new pileUpTool();
-    std::cout << "pileup loaded\n";
     std::string dirName = env+("/src/nano/analysis/topMass/Results/")+argv[1];
     std::string temp = argv[1];
     Bool_t isMC = false;
@@ -310,14 +338,16 @@ int main(int argc, char* argv[])
     for(Int_t i = 2; i < argc; i++)
     {
       TFile *f = TFile::Open(argv[i], "read");
-      std::cout << argv[i] << "\n";                          
+     
       TTree *tree;                  
       f->GetObject("Events", tree);
+      
       temp = argv[i];   
       found = temp.find_last_of('/');
       std::string outPutName = dirName+temp.substr(found);
       nanoAnalysis t(tree, isMC);
-      t.LoadModules(pileUp, lumi, rocCor);  
+      
+      t.LoadModules(pileUp, lumi);  
       t.setOutput(outPutName);
       t.Loop();
     }
@@ -330,6 +360,7 @@ int main(int argc, char* argv[])
     f->GetObject("Events", tree);
 
     nanoAnalysis t(tree);
+    t.LoadModules(pileUp, lumi);  
     t.setOutput("test.root");
     t.Loop();
   }
@@ -367,11 +398,11 @@ void nanoAnalysis::MakeBranch(TTree* t)
   t->Branch("step5", &b_step5, "step5/O");
   t->Branch("step6", &b_step6, "step6/O");
   t->Branch("step7", &b_step7, "step7/O");
-
-  //m_tree->Branch("lep1", "TLorentzVector", &b_lep1);
-  //m_tree->Branch("lep1_pid", &b_lep1_pid, "lep1_pid/I");    
-  //m_tree->Branch("lep2", "TLorentzVector", &b_lep2);
-  //m_tree->Branch("lep2_pid", &b_lep2_pid, "lep2_pid/I");    
+  
+  m_tree->Branch("lep1", "TLorentzVector", &b_lep1);
+  m_tree->Branch("lep1_pid", &b_lep1_pid, "lep1_pid/I");    
+  m_tree->Branch("lep2", "TLorentzVector", &b_lep2);
+  m_tree->Branch("lep2_pid", &b_lep2_pid, "lep2_pid/I");    
   t->Branch("dilep", "TLorentzVector", &b_dilep);
   //m_tree->Branch("jet1", "TLorentzVector", &b_jet1);
   //m_tree->Branch("jet1_CSVInclV2", &b_jet1_CSVInclV2, "jet1_CSVInclV2/F");
@@ -382,29 +413,35 @@ void nanoAnalysis::MakeBranch(TTree* t)
   t->Branch("weight", &b_weight, "weight/F");
   t->Branch("puweight", &b_puweight, "puweight/F");
   t->Branch("genweight", &b_genweight, "genweight/F");
+
+  t->Branch("mueffweight", &b_mueffweight, "mueffweight/F");
+  t->Branch("eleffweight", &b_eleffweight, "eleffweight/F");
   t->Branch("PV_npvs", &PV_npvs, "PV_npvs/I");
 }
 
 
 void nanoAnalysis::resetBranch()
 {
-  //b_lep1.SetPtEtaPhiM(0,0,0,0);
-  //b_lep2.SetPtEtaPhiM(0,0,0,0);
+  b_lep1.SetPtEtaPhiM(0,0,0,0);
+  b_lep2.SetPtEtaPhiM(0,0,0,0);
   b_dilep.SetPtEtaPhiM(0,0,0,0);
+
   //b_jet1.SetPtEtaPhiM(0,0,0,0);
   //b_jet2.SetPtEtaPhiM(0,0,0,0);
   recoleps.clear();
-  idxs.clear();
-  b_lep1_pid = -1; b_lep2_pid = -1;
+  b_lep1_pid = 0; b_lep2_pid = 0;
   b_jet1_CSVInclV2 = -1; b_jet2_CSVInclV2 = -1;
+  b_tri_SL = 0; b_tri_DL = 0;
 
-  b_nvertex = -1; b_step = -1; b_channel = -1; b_njet = -1; b_nbjet = -1;
+  b_nvertex = 0; b_step = -1; b_channel = 0; b_njet = 0; b_nbjet = 0;
   b_step1 = 0; b_step2 = 0; b_step3 = 0; b_step4 = 0; b_step5 = 0; b_step6 = 0; b_step7 = 0;
-  b_met = -1; b_weight = -1; b_genweight = -1; b_puweight = -1;
+  b_met = -9; b_weight = 1; b_genweight = 1; b_puweight = 1;
+  b_mueffweight = 1;b_mueffweight_up = 1;b_mueffweight_dn = 1;
+  b_eleffweight = 1;b_eleffweight_up = 1;b_eleffweight_dn = 1;
 }
 
 
-
+/*
 Double_t nanoAnalysis::roccoR(TLorentzVector m, int q, int nGen, int nTrackerLayers)
 {
   Float_t u1 = gRandom->Rndm();
@@ -424,3 +461,4 @@ Double_t nanoAnalysis::roccoR(TLorentzVector m, int q, int nGen, int nTrackerLay
   }
   return 1.0;
 }
+*/
