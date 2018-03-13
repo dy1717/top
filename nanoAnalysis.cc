@@ -23,9 +23,6 @@ vector<TParticle> nanoAnalysis::muonSelection()
 
     TLorentzVector mom;
     mom.SetPtEtaPhiM(Muon_pt[i], Muon_eta[i], Muon_phi[i], Muon_mass[i]);
-
-   // mom *= roccoR(mom, Muon_charge[i], Muon_genPartIdx[i], Muon_nTrackerLayers[i]);
-    
     auto muon = TParticle();
     muon.SetPdgCode(13*Muon_charge[i]*-1);
     muon.SetMomentum(mom);
@@ -60,7 +57,7 @@ vector<TParticle> nanoAnalysis::elecSelection()
 vector<TParticle> nanoAnalysis::jetSelection()
 {
   vector<TParticle> jets; 
-
+  float Jet_SF_CSV[19] = {1.0,};
   for (UInt_t i = 0; i < nJet; ++i){
     if (Jet_pt[i] < 30) continue;
     if (std::abs(Jet_eta[i]) > 2.4) continue;
@@ -75,7 +72,14 @@ vector<TParticle> nanoAnalysis::jetSelection()
     auto jet = TParticle();
     jet.SetMomentum(mom);
     jets.push_back(jet);
+    for (UInt_t iu = 0; iu < 19; iu++)
+    {   
+      Jet_SF_CSV[iu] *= m_btagSF.getSF(jet, Jet_btagCSVV2[i], Jet_hadronFlavour[i], iu);
+    }
   }
+  for (UInt_t i =0; i<19; i++) b_csvweights.push_back(Jet_SF_CSV[i]);
+  b_btagweight = Jet_SF_CSV[0];
+
   return jets;
 }
 
@@ -85,10 +89,16 @@ vector<TParticle> nanoAnalysis::bjetSelection()
   vector<TParticle> bjets; 
   for (UInt_t i = 0; i < nJet; ++i ){
     if (Jet_pt[i] < 30) continue;
-
+    if (std::abs(Jet_eta[i]) > 2.4) continue;
+    if (Jet_jetId[i] < 1) continue;
     if (Jet_btagCSVV2[i] < 0.8484) continue;
     TLorentzVector mom;
     mom.SetPtEtaPhiM(Jet_pt[i], Jet_eta[i], Jet_phi[i], Jet_mass[i]);
+    bool hasOverLap = false;
+    for (auto lep : recoleps){
+        if (mom.TLorentzVector::DeltaR(lep) < 0.4) hasOverLap = true;
+    }
+    if (hasOverLap) continue;
     auto bjet = TParticle();
     bjet.SetMomentum(mom);
     bjets.push_back(bjet);
@@ -99,7 +109,6 @@ vector<TParticle> nanoAnalysis::bjetSelection()
 
 void nanoAnalysis::analysis()
 {
-  //h_nevents->Fill(0.5);  //ori
   h_cutFlow->Fill(0);
 
   //Run for MC
@@ -163,30 +172,47 @@ void nanoAnalysis::analysis()
 
   b_dilep = b_lep1 + b_lep2;
 
-
+  //Triggers
   if (b_channel == CH_MUMU){
     if (m_isMC){
-      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ 
-         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //mumu
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ     //mumu
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ //
          || HLT_IsoMu24 || HLT_IsoTkMu24)) return; //mu
     }
-    else {
-      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ
+    if (m_isDL){
+      if (!(HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ     //mumu
          || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)) return;
+    }
+    if (m_isSL_m){
+      if ((HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_DZ        //mumu
+         || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL || HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_DZ)  //
+         || !(HLT_IsoMu24 || HLT_IsoTkMu24)) return;  //mu
     }
   }
 
   if (b_channel == CH_MUEL){
     if (m_isMC){
-      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
-          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ
-          || HLT_IsoMu24 || HLT_IsoTkMu24
-          || HLT_Ele27_WPTight_Gsf)) return;
+      if (!( HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL        //emu//
+          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ  //
+          || HLT_IsoMu24 || HLT_IsoTkMu24       //mu
+          || HLT_Ele27_WPTight_Gsf)) return;    //e
     }
-    else {
-      if (!(HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL
+    if (m_isDL){
+      if (!(HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL         //emu
          || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ)) return;
     }
+    if (m_isSL_e) {
+      if ((HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL         //emu
+         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ) //
+         || !(HLT_Ele27_WPTight_Gsf)      //e 
+         || (HLT_IsoMu24 || HLT_IsoTkMu24)) return;   //mu
+    }
+    if (m_isSL_m) {
+      if ((HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL         //emu
+         || HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL_DZ || HLT_Mu8_TrkIsoVVL_Ele23_CaloIdL_TrackIdL_IsoVL_DZ) //
+         || (HLT_Ele27_WPTight_Gsf)      //e 
+         || !(HLT_IsoMu24 || HLT_IsoTkMu24)) return;   //mu
+    } 
   }
 
   if (b_channel == CH_ELEL){
@@ -194,19 +220,24 @@ void nanoAnalysis::analysis()
       if (!(HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ //ee
           || HLT_Ele27_WPTight_Gsf)) return;  //e
     }
-    else{
-      if (!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) return;
+    if (m_isDL){
+      if (!HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ) return;  //ee
     }
+    if (m_isSL_e){
+      if (HLT_Ele23_Ele12_CaloIdL_TrackIdL_IsoVL_DZ  //ee
+         || !(HLT_Ele27_WPTight_Gsf)) return;        //e
+    }
+
   }
 
-
+  //leptonSF
   b_mueffweight    = muonSF_.getScaleFactor(recolep1, 13, 0)*muonSF_.getScaleFactor(recolep2, 13,  0);
   b_mueffweight_up = muonSF_.getScaleFactor(recolep1, 13, +1)*muonSF_.getScaleFactor(recolep2, 13, +1);
   b_mueffweight_dn = muonSF_.getScaleFactor(recolep1, 13, -1)*muonSF_.getScaleFactor(recolep2, 13, -1);
+
   b_eleffweight    = elecSF_.getScaleFactor(recolep1, 11, 0)*elecSF_.getScaleFactor(recolep2, 11,  0);
   b_eleffweight_up = elecSF_.getScaleFactor(recolep1, 11, +1)*elecSF_.getScaleFactor(recolep2, 11, +1);
   b_eleffweight_dn = elecSF_.getScaleFactor(recolep1, 11, -1)*elecSF_.getScaleFactor(recolep2, 11, -1);
-
 
   auto jets = jetSelection();
   auto bjets = bjetSelection();
@@ -217,16 +248,11 @@ void nanoAnalysis::analysis()
   b_step = 1;
   h_cutFlow->Fill(4);
 
-
   if (b_channel != CH_MUEL && 76 < b_dilep.M() && b_dilep.M() < 106) return;
   b_step2 = true;
   b_step = 2;
   h_cutFlow->Fill(5);
    
-
-
-
-
   b_met = MET_pt;
   b_njet = jets.size();
   b_nbjet = bjets.size();
@@ -265,60 +291,22 @@ void nanoAnalysis::Loop()
   float nPassTrig = 0;
   
   for (Long64_t jentry=0; jentry<nentries;jentry++) {
-    std::cout << jentry << "\n";
     //Prepare for new loop
     resetBranch();
     Long64_t ientry = LoadTree(jentry);
     if (ientry < 0) break;
     nb = fChain->GetEntry(jentry); nbytes += nb;
-    
-    analysis();
-
-    m_tree->Fill();
-
+    bool keep = analysis();
+    if (keep){
+      m_tree->Fill();
+    }
   }
-  //for sync
-  //for (int x=1; x<10; x++){
-  //  cout << h_cutFlow->GetBinContent(x) << endl;
-  //}
 }
-/*
-int main(int argc, char* argv[])
-{
-  if (argc < 2) {
-    std::cerr << "Usage: " << argv[0] << " data set txt file" << std::endl;
-    return 1;
-  }
-
-  TChain * chain = new TChain("Events","");
-  string filename;
-  ifstream infile;
-  infile.open(argv[1]);
-
-  while(!infile.eof()){
-    getline(infile,filename);
-    if (filename.find('#') != string::npos) continue;
-    if (filename.empty()) continue;
-
-cout<< "Opening File: "<<filename << endl;
-    chain->Add(TString(filename+"/Events"));
-
-  }
-  infile.close();
-
-
-  nanoAnalysis t(chain, true);
-  t.setOutput("tree.root");
-  t.Loop();
-
-  return 0;
-
-}
-*/
 
 int main(int argc, char* argv[])
 {
   std::string env = std::getenv("CMSSW_BASE");
+  std::string en = "";
   lumiTool* lumi = new lumiTool(env+"/src/nano/analysis/data/Cert_271036-284044_13TeV_PromptReco_Collisions16_JSON.txt");
   pileUpTool* pileUp = new pileUpTool();
 
@@ -326,9 +314,24 @@ int main(int argc, char* argv[])
   {
     std::string dirName = env+("/src/nano/analysis/topMass/Results/")+argv[1];
     std::string temp = argv[1];
+    
+    Bool_t isDL = false;
+    Size_t found_DL = temp.find("Double");
+    if(found_DL != std::string::npos) isDL = true;
+
+    Bool_t isSL_e = false;
+    Size_t found_SL_e = temp.find("SingleElectron");
+    if(found_SL_e != std::string::npos) isSL_e = true;
+    
+    Bool_t isSL_m = false;
+    Size_t found_SL_m = temp.find("SingleMuon");
+    if(found_SL_m != std::string::npos) isSL_m = true;
+
     Bool_t isMC = false;
     Size_t found = temp.find("Run");
     if(found == std::string::npos) isMC = true;
+
+    
     for(Int_t i = 2; i < argc; i++)
     {
       TFile *f = TFile::Open(argv[i], "read");
@@ -339,7 +342,7 @@ int main(int argc, char* argv[])
       temp = argv[i];   
       found = temp.find_last_of('/');
       std::string outPutName = dirName+temp.substr(found);
-      nanoAnalysis t(tree, isMC);
+      nanoAnalysis t(tree, isMC, isDL, isSL_e, isSL_m);
       
       t.LoadModules(pileUp, lumi);  
       t.setOutput(outPutName);
@@ -407,10 +410,43 @@ void nanoAnalysis::MakeBranch(TTree* t)
   t->Branch("weight", &b_weight, "weight/F");
   t->Branch("puweight", &b_puweight, "puweight/F");
   t->Branch("genweight", &b_genweight, "genweight/F");
-
+  t->Branch("csvweight", "std::vector<float>", &b_csvweights);
+  t->Branch("btagweight", &b_btagweight, "btagweight/F");
   t->Branch("mueffweight", &b_mueffweight, "mueffweight/F");
   t->Branch("eleffweight", &b_eleffweight, "eleffweight/F");
   t->Branch("PV_npvs", &PV_npvs, "PV_npvs/I");
+
+  
+  t->Branch("ncmeson", &ncmeson, "ncmeson/I");
+  t->Branch("cmeson_dca", &cmeson_dca, "cmeson_dca/F");
+  t->Branch("cmeson_angleXY", &cmeson_angleXY, "cmeson_angleXY/F");
+  t->Branch("cmeson_angleXYZ", &cmeson_angleXYZ, "cmeson_angleXYZ/F");
+  t->Branch("cmeson_trk_normalizedChi2", &cmeson_trk_normalizedChi2, "cmeson_trk_normalizedChi2/F");
+  t->Branch("cmeson_trk_nHits", &cmeson_trk_nHits, "cmeson_trk_nHits/F");
+  t->Branch("cmeson_trk_pt", &cmeson_trk_pt, "cmeson_trk_pt/F");
+  t->Branch("cmeson_trk_ipsigXY", &cmeson_trk_ipsigXY, "cmeson_trk_ipsigXY/F");
+  t->Branch("cmeson_trk_ipsigZ", &cmeson_trk_ipsigZ, "cmeson_trk_ipsigZ/F");
+  t->Branch("cmeson_lxy", &cmeson_lxy, "cmeson_lxy/F");
+  t->Branch("cmeson_lxySig", &cmeson_lxySig, "cmeson_lxySig/F");
+  t->Branch("cmeson_l3D", &cmeson_l3D, "cmeson_l3D/F");
+  t->Branch("cmeson_l3DSig", &cmeson_l3DSig, "cmeson_l3DSig/F");
+  t->Branch("cmeson_jetDR", &cmeson_jetDR, "cmeson_jetDR/F");
+  t->Branch("cmeson_legDR", &cmeson_legDR, "cmeson_legDR/F");
+  t->Branch("cmeson_diffMass", &cmeson_diffMass, "cmeson_diffMass/F");
+  t->Branch("cmeson_nJet", &cmeson_nJet, "cmeson_nJet/I");
+  t->Branch("cmeson_mcMatch", &cmeson_mcMatch, "cmeson_mcMatch/I");
+  t->Branch("cmeson_chi2", &cmeson_chi2, "cmeson_chi2/F");
+  t->Branch("cmeson_eta", &cmeson_eta, "cmeson_eta/F");
+  t->Branch("cmeson_mass", &cmeson_mass, "cmeson_mass/F");
+  t->Branch("cmeson_phi", &cmeson_phi, "cmeson_phi/F");
+  t->Branch("cmeson_pt", &cmeson_pt, "cmeson_pt/F");
+  t->Branch("cmeson_x", &cmeson_x, "cmeson_x/F");
+  t->Branch("cmeson_y", &cmeson_y, "cmeson_y/F");
+  t->Branch("cmeson_z", &cmeson_z, "cmeson_z/F");
+  t->Branch("cmeson_ndof", &cmeson_ndof, "cmeson_ndof/I");
+  t->Branch("cmeson_pdgId", &cmeson_pdgId, "cmeson_pdgId/I");
+
+
 }
 
 
@@ -425,7 +461,6 @@ void nanoAnalysis::resetBranch()
   recoleps.clear();
   b_lep1_pid = 0; b_lep2_pid = 0;
   b_jet1_CSVInclV2 = -1; b_jet2_CSVInclV2 = -1;
-  b_tri_SL = 0; b_tri_DL = 0;
 
   b_nvertex = 0; b_step = -1; b_channel = 0; b_njet = 0; b_nbjet = 0;
   b_step1 = 0; b_step2 = 0; b_step3 = 0; b_step4 = 0; b_step5 = 0; b_step6 = 0; b_step7 = 0;

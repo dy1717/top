@@ -22,7 +22,7 @@
 #include "../src/ElecScaleFactorEvaluator.h"
 //#include "../plugins/jsoncpp.cpp"
 #include "../src/lumiTool.h"
-
+#include "../src/BTagWeightEvaluator.h"
 // Header file for the classes stored in the TTree if any.
 
 class nanoAnalysis {
@@ -43,11 +43,10 @@ private:
   TParticle recolep1, recolep2;
   int b_lep1_pid, b_lep2_pid;
   float b_jet1_CSVInclV2, b_jet2_CSVInclV2;
-
+  std::vector<Float_t> b_csvweights;
   int b_nvertex, b_step, b_channel, b_njet, b_nbjet;
   bool b_step1, b_step2, b_step3, b_step4, b_step5, b_step6, b_step7;  
-  float b_tri_SL, b_tri_DL;
-  float b_met, b_weight, b_genweight, b_puweight;
+  float b_met, b_weight, b_genweight, b_puweight, b_btagweight;
   float b_mueffweight, b_mueffweight_up, b_mueffweight_dn,
         b_eleffweight, b_eleffweight_up, b_eleffweight_dn;
 
@@ -56,7 +55,11 @@ private:
   TH1D* hist_mc;
   MuonScaleFactorEvaluator muonSF_;
   ElecScaleFactorEvaluator elecSF_;
+  BTagWeightEvaluator m_btagSF;
   Bool_t m_isMC;
+  Bool_t m_isDL;
+  Bool_t m_isSL_e;
+  Bool_t m_isSL_m;
 
   pileUpTool *m_pileUp;
   lumiTool* m_lumi;
@@ -2085,7 +2088,7 @@ private:
   TBranch        *b_Flag_METFilters;   //!
       
       
-  nanoAnalysis(TTree *tree=0, Bool_t flag = false);
+  nanoAnalysis(TTree *tree=0, Bool_t flag = false, Bool_t dl = false, Bool_t sle = false, Bool_t slm = false);
   virtual ~nanoAnalysis();
   virtual Int_t    Cut(Long64_t entry);
   virtual Int_t    GetEntry(Long64_t entry);
@@ -2099,7 +2102,7 @@ private:
 #endif
 
 #ifdef nanoAnalysis_cxx
-nanoAnalysis::nanoAnalysis(TTree *tree, Bool_t flag) : fChain(0), m_isMC(flag)
+nanoAnalysis::nanoAnalysis(TTree *tree, Bool_t flag, Bool_t dl, Bool_t sle, Bool_t slm) : fChain(0), m_isMC(flag), m_isDL(dl), m_isSL_e(sle), m_isSL_m(slm)
 {
   // if parameter tree is not specified (or zero), connect the file
   // used to generate this class and read the Tree.
